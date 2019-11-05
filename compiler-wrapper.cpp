@@ -85,11 +85,12 @@ void edit_params(int argc, char* argv[]) {
     cc_params[0] = getenv(c_mode? "WRAP_CC": "WRAP_CXX");
     cc_params[params.size() + 1] = nullptr;
 
+    /*
     for (int i = 0; i < params.size() +1 ; i++) {
         printf("%s ", cc_params[i]);
     }
     printf("\n");
-
+    */
 }
 
 int main(int argc, char* argv[]) {
