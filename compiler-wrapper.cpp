@@ -23,6 +23,14 @@ bool check_variable(const string line, const string env) {
     return false;
 }
 
+bool check_variable_exact(const string line, const string env) {
+    if (line.find(env+"=") != string::npos) {
+        setenv(env.c_str(), line.c_str() + env.size() + 1, false);
+        return true;
+    }
+    return false;
+}
+
 bool check_variables(const string line) {
     bool set = false;
     set |= check_variable(line, "CC");
@@ -30,6 +38,8 @@ bool check_variables(const string line) {
     set |= check_variable(line, "CFLAGS");
     set |= check_variable(line, "CXXFLAGS");
     set |= check_variable(line, "LDFLAGS");
+    set |= check_variable_exact(line, "LD_LIBRARY_PATH");
+    set |= check_variable_exact(line, "LD_PRELOAD");
     return set;
 }
 
