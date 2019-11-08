@@ -61,8 +61,8 @@ void edit_params(int argc, char* argv[]) {
     bool maybe_linking = true;
     
 
-    while(--argc) {
-        string cur = argv[argc];
+    for (int i = 1; i < argc; i++) {
+        string cur = argv[i];
 
         if (cur == "-c" || cur == "-S" || cur == "-E")
             maybe_linking = false;
