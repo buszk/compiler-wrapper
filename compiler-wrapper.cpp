@@ -6,7 +6,9 @@
 #include <vector>
 
 
-using namespace std;
+using std::string;
+using std::ifstream;
+using std::vector;
 
 static char** cc_params;              /* Parameters passed to the real CC  */
 static size_t cc_par_cnt = 1;         /* Param count, including argv0      */
@@ -15,7 +17,7 @@ vector<string> params;                /* Params in a vectorl               */
 
 
 bool check_variable(const string line, const string env) {
-    if (line.find(env+"=") != string::npos) {
+    if (line.find(env+"=") == 0) {
         string wrap_env = "WRAP_" + env;
         setenv(wrap_env.c_str(), line.c_str() + env.size() + 1, false);
         return true;
@@ -24,8 +26,14 @@ bool check_variable(const string line, const string env) {
 }
 
 bool check_variable_exact(const string line, const string env) {
-    if (line.find(env+"=") != string::npos) {
-        setenv(env.c_str(), line.c_str() + env.size() + 1, false);
+    if (line.find(env+"=") == 0) {
+        const char *prev = getenv(env.c_str());
+        string var = line.substr(env.size() + 1);
+        if (prev) {
+            var += ":";
+            var += string(prev);
+        }
+        setenv(env.c_str(), var.c_str(), true);
         return true;
     }
     return false;
@@ -53,6 +61,8 @@ void print_variables() {
     print_variable("WRAP_CFLAGS");
     print_variable("WRAP_CXXFLAGS");
     print_variable("WRAP_LDFLAGS");
+    print_variable("LD_LIBRARY_PATH");
+    print_variable("LD_PRELOAD");
 }
 
 void add_flag_to_params(vector<string> &params, const char*var) {
@@ -95,19 +105,23 @@ void edit_params(int argc, char* argv[]) {
     cc_params[0] = getenv(c_mode? "WRAP_CC": "WRAP_CXX");
     cc_params[params.size() + 1] = nullptr;
 
-    /*
+#ifdef DEBUG
     for (int i = 0; i < params.size() +1 ; i++) {
         printf("%s ", cc_params[i]);
     }
     printf("\n");
-    */
+#endif
+}
+
+string get_config(string dir) {
+    return getenv("WRAP_CONFIG") ? string(getenv("WRAP_CONFIG")) : dir + "/config";
 }
 
 int main(int argc, char* argv[]) {
 
     string bin = string(argv[0]);
     string dir = bin.substr(0, bin.find_last_of('/'));
-    string config = dir + "/config";
+    string config = get_config(dir);
 
     if (argc < 2) {
         printf("\n"
@@ -129,23 +143,33 @@ int main(int argc, char* argv[]) {
     if (bin.find_last_of("++") == bin.size()-1) 
         c_mode = false;
 
-    cout << "Binary: " << bin << endl;
-    cout << "Directory: " << dir << endl;
+    printf("Binary: %s\n", bin.c_str());
+    printf("Directory: %s\n", dir.c_str());
 
-    ifstream config_file(config, ios::in);
+    ifstream config_file(config, std::ios::in);
+    
+    if (!config_file.good()) {
+        printf("\n"
+               "The config file %s does not exists\n"
+               "Please provide a valid config file\n",
+               config.c_str());
+    }
+
     string line;
     while(getline(config_file, line)) {
         if (!check_variables(line)) {break;}
     }
     config_file.close();
 
-    //print_variables();
+#ifdef DEBUG
+    print_variables();
+#endif
 
     edit_params(argc, argv);
 
     execvp(cc_params[0], (char**)cc_params);
 
-    cerr << "Failed to execute " << string(getenv(c_mode? "WRAP_CC": "WRAP_CXX")) << endl;
+    fprintf(stderr, "Failed to execute %s\n", string(getenv(c_mode? "WRAP_CC": "WRAP_CXX")));
     return 0;
 
 }

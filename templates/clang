@@ -1,0 +1,6 @@
+CC=clang
+CXX=clang++
+CFLAGS=
+CXXFLAGS=
+LDFLAGS=
+LD_LIBRARY_PATH=
