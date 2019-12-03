@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <unistd.h>
 #include <vector>
+#include <algorithm>
+#include <cstring>
 
 
 using std::string;
@@ -46,6 +48,7 @@ bool check_variables(const string line) {
     set |= check_variable(line, "CFLAGS");
     set |= check_variable(line, "CXXFLAGS");
     set |= check_variable(line, "LDFLAGS");
+    set != check_variable(line, "FILTER");
     set |= check_variable_exact(line, "LD_LIBRARY_PATH");
     set |= check_variable_exact(line, "LD_PRELOAD");
     return set;
@@ -61,11 +64,14 @@ void print_variables() {
     print_variable("WRAP_CFLAGS");
     print_variable("WRAP_CXXFLAGS");
     print_variable("WRAP_LDFLAGS");
+    print_variable("WRAP_FILTER");
     print_variable("LD_LIBRARY_PATH");
     print_variable("LD_PRELOAD");
 }
 
 void add_flag_to_params(vector<string> &params, const char*var) {
+    if (!var)
+        return;
     string flag(var);
     size_t current, previous = 0;
     current = flag.find_first_of(" ");
@@ -79,7 +85,14 @@ void add_flag_to_params(vector<string> &params, const char*var) {
 
 void edit_params(int argc, char* argv[]) {
     bool maybe_linking = true;
-    
+    vector<string> filters;
+
+    if (argc == 2 && !strcmp(argv[1], "-v")) {
+        params.push_back("-v");
+        goto invoke;
+    }
+
+    add_flag_to_params(filters, getenv("WRAP_FILTER"));
 
     for (int i = 1; i < argc; i++) {
         string cur = argv[i];
@@ -87,7 +100,8 @@ void edit_params(int argc, char* argv[]) {
         if (cur == "-c" || cur == "-S" || cur == "-E")
             maybe_linking = false;
 
-        params.push_back(cur);
+        if (std::find(filters.begin(), filters.end(), cur) == filters.end())
+            params.push_back(cur);
     }
 
     add_flag_to_params(params, getenv(c_mode? "WRAP_CFLAGS": "WRAP_CXXFLAGS"));
@@ -96,6 +110,7 @@ void edit_params(int argc, char* argv[]) {
         add_flag_to_params(params, getenv("WRAP_LDFLAGS"));
     }
 
+invoke:
     cc_params = new char* [params.size() + 2];
 
     for (int i = 0; i < params.size(); i++) {
