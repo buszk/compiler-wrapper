@@ -48,7 +48,7 @@ bool check_variables(const string line) {
     set |= check_variable(line, "CFLAGS");
     set |= check_variable(line, "CXXFLAGS");
     set |= check_variable(line, "LDFLAGS");
-    set != check_variable(line, "FILTER");
+    set |= check_variable(line, "FILTER");
     set |= check_variable_exact(line, "LD_LIBRARY_PATH");
     set |= check_variable_exact(line, "LD_PRELOAD");
     return set;
@@ -89,6 +89,13 @@ void edit_params(int argc, char* argv[]) {
 
     if (argc == 2 && !strcmp(argv[1], "-v")) {
         params.push_back("-v");
+        goto invoke;
+    }
+
+    if (getenv("WRAP_CONFIGURE")) {
+        for (int i = 1; i < argc; i++) {
+            params.push_back(argv[i]);
+        }
         goto invoke;
     }
 
@@ -158,8 +165,10 @@ int main(int argc, char* argv[]) {
     if (bin.find_last_of("++") == bin.size()-1) 
         c_mode = false;
 
+#ifdef DEBUG
     printf("Binary: %s\n", bin.c_str());
     printf("Directory: %s\n", dir.c_str());
+#endif
 
     ifstream config_file(config, std::ios::in);
     
