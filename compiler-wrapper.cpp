@@ -83,8 +83,21 @@ void add_flag_to_params(vector<string> &params, const char*var) {
     params.push_back(flag.substr(previous, current - previous));
 }
 
+bool endsWith(const std::string &mainStr, const std::string &toMatch)
+{
+    if(mainStr.size() >= toMatch.size() &&
+            mainStr.compare(mainStr.size() - toMatch.size(), toMatch.size(), toMatch) == 0)
+        return true;
+    else
+        return false;
+
+}
+
 void edit_params(int argc, char* argv[]) {
     bool maybe_linking = true;
+    bool maybe_compiling = false;
+    bool is_library = false;
+    bool next = false;
     vector<string> filters;
 
     if (argc == 2 && !strcmp(argv[1], "-v")) {
@@ -107,13 +120,37 @@ void edit_params(int argc, char* argv[]) {
         if (cur == "-c" || cur == "-S" || cur == "-E")
             maybe_linking = false;
 
+        if (endsWith(cur, ".c") || endsWith(cur, ".cpp"))
+            maybe_compiling = true;
+
+        if (next) {
+#ifdef DEBUG
+            printf("Object: %s\n", argv[i]);
+#endif
+            if (endsWith(cur, ".a") || endsWith(cur, ".so") ||
+                cur.find(".a.") != string::npos ||
+                cur.find(".so.") != string::npos) {
+#ifdef DEBUG
+                printf("This is generating a LIBRARY!\n");
+#endif
+                is_library = true;
+            }
+            
+            next = false;
+        }
+        
+        if (cur == "-o") 
+            next = true;
+
         if (std::find(filters.begin(), filters.end(), cur) == filters.end())
             params.push_back(cur);
     }
 
-    add_flag_to_params(params, getenv(c_mode? "WRAP_CFLAGS": "WRAP_CXXFLAGS"));
+    if (maybe_compiling) {
+        add_flag_to_params(params, getenv(c_mode? "WRAP_CFLAGS": "WRAP_CXXFLAGS"));
+    }
     
-    if (maybe_linking) {
+    if (maybe_linking && !is_library) {
         add_flag_to_params(params, getenv("WRAP_LDFLAGS"));
     }
 
@@ -193,7 +230,7 @@ int main(int argc, char* argv[]) {
 
     execvp(cc_params[0], (char**)cc_params);
 
-    fprintf(stderr, "Failed to execute %s\n", string(getenv(c_mode? "WRAP_CC": "WRAP_CXX")));
+    fprintf(stderr, "Failed to execute %s\n", getenv(c_mode? "WRAP_CC": "WRAP_CXX"));
     return 0;
 
 }
